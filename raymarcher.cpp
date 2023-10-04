@@ -50,15 +50,15 @@ void calcNoise(float x, float y, float s,float h){
 }
 
 void terrainColSDF(float r,float g,float b,float px,float py,float pz){
-    noise=100;
-    /*calcNoise(px,pz,700,450);
+    noise=0;
+    calcNoise(px,pz,700,450);
     calcNoise(px,pz,250,200);
     calcNoise(px,pz,120,50);
     calcNoise(px,pz,50,25);
     calcNoise(px,pz,20,10);
     calcNoise(px,pz,10,3);
     calcNoise(px,pz,3,1.5);
-    calcNoise(px,pz,1,0.5);*/
+    calcNoise(px,pz,1,0.5);
     if(py-noise<SDF){
         SDF=py-noise;
         if(SDF<epsilon&&stats){
@@ -201,12 +201,9 @@ void renderPixel(float x,float y){
                 reflectionG=skyG;
                 reflectionB=skyB;
             }
-        }/*
+        }
         finalR=((1-r)*finalR)+(r*reflectionR);
         finalG=((1-r)*finalG)+(r*reflectionG);
-        finalB=((1-r)*finalB)+(r*reflectionB);*/
-        finalR=255;
-        finalG=255;
         finalB=((1-r)*finalB)+(r*reflectionB);
     }else{
         finalR=skyR;
