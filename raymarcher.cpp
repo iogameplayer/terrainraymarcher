@@ -10,7 +10,7 @@ const float grassDensity=0.6,epsilon=0.01,skyR=140,skyG=220,skyB=255,fogVal=5000
 int WIDTH=480,HEIGHT=360;
 
 // Camera position
-const float camX=0,camY=170,camZ=0,camRotX=-15,camRotY=160;
+const float camX=0,camY=350,camZ=0,camRotX=-15,camRotY=160;
 
 // Definitions
 float sinA,cosA,sinB,cosB,r,reflectivity,temp1,temp2,brightR,brightG,brightB,distX,distY,distZ,dist,rayDirX,rayDirY,rayDirZ,rayX,rayY,rayZ,SDF,rayLen,noise,dot,SmoothStep,surfaceR,surfaceG,surfaceB,height,hitX,hitY,hitZ,normalX,normalY,normalZ,finalR,finalG,finalB,fog,reflectionR,reflectionG,reflectionB;
