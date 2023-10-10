@@ -3,92 +3,67 @@
 #include <cmath>
 #include <iostream>
 using namespace std;
-
 // Settings - these are changeable, try some combinations out!
-const float grassDensity=0.6,epsilon=0.01,skyR=140,skyG=220,skyB=255,fogVal=5000,waterHeight=250,lightDiffuse=5000,fov=240;
+const float grassDensity=0.6,epsilon=0.01,skyR=140,skyG=220,skyB=255,fogVal=5000,waterHeight=250,lightDiffuse=5000,fov=240,renderDistance=1000,seed1=12.9898,seed2=78.233;
 
 int WIDTH=480,HEIGHT=360;
 
 // Camera position
-const float camX=0,camY=350,camZ=0,camRotX=-15,camRotY=160;
-
-// Definitions
-float sinA,cosA,sinB,cosB,r,reflectivity,temp1,temp2,brightR,brightG,brightB,distX,distY,distZ,dist,rayDirX,rayDirY,rayDirZ,rayX,rayY,rayZ,SDF,rayLen,noise,dot,SmoothStep,surfaceR,surfaceG,surfaceB,height,hitX,hitY,hitZ,normalX,normalY,normalZ,finalR,finalG,finalB,fog,reflectionR,reflectionG,reflectionB;
+const float camX=1420,camY=350,camZ=-250,camRotX=-15,camRotY=160;
+const float sinA=sin(camRotX),sinB=sin(camRotY),cosA=cos(camRotX),cosB=cos(camRotY);
+float r,reflectivity,temp1,temp2,brightR,brightG,brightB,distX,distY,distZ,dist,rayDirX,rayDirY,rayDirZ,rayX,rayY,rayZ,SDF,rayLen,noise,dot,SmoothStep,surfaceR,surfaceG,surfaceB,height,hitX,hitY,hitZ,normalX,normalY,normalZ,finalR,finalG,finalB,fog,reflectionR,reflectionG,reflectionB;
 bool hit,stats,hitGround;
 
-
-void calcDist(float x1,float y1,float z1,float x2,float y2,float z2){
-    distX=x2-x1;
-    distY=y2-y1;
-    distZ=z2-z1;
-    dist=sqrt((distX*distX)+(distY*distY)+(distZ*distZ));
-}
-void rotateRay(float x,float y,float z,float camX,float camY){
-    rayDirY=(z*sinA)+(y*cosA);
-    rayDirZ=(z*cosA)-(y*sinA);
-    rayDirX=(rayDirZ*sinB)+(x*cosB);
-    rayDirZ=(rayDirZ*cosB)-(x*sinB);
-}
-void calcDot(float x1, float y1,float z1,float x2, float y2, float z2){
-    dot=(x1*x2)+(y1*y2)+(z1*z2);
-}
-void calcSmoothStep(float n1,float n2,float k){
+void calcSmoothStep(float n1,float n2,float k){ // not the issue
     SmoothStep=n1+((k*k*(3-(2*k)))*(n2-n1));
 }
-void calcNoise(float x, float y, float s,float h){
-    calcDot(ceil (x/s)*s,0,floor(y/s)*s,12.9898,0,78.233);
+void calcNoise(float x, float y, float s,float h){// not the issue
+    dot=(ceil (x/s)*s*seed1)+(floor(y/s)*s*seed2);
     temp1=fmod(sin(dot)*1000,1);
-    calcDot(ceil (x/s)*s,0,ceil (y/s)*s,12.9898,0,78.233);
+    dot=(ceil (x/s)*s*seed1)+(ceil (y/s)*s*seed2);
     calcSmoothStep(temp1,fmod(sin(dot)*1000,1),fmod(y,s)/s);
     temp2=SmoothStep;
-    calcDot(floor(x/s)*s,0,floor(y/s)*s,12.9898,0,78.233);
+    dot=(floor(x/s)*s*seed1)+(floor(y/s)*s*seed2);
     temp1=fmod(sin(dot)*1000,1);
-    calcDot(floor(x/s)*s,0,ceil (y/s)*s,12.9898,0,78.233);
+    dot=(floor(x/s)*s*seed1)+(ceil (y/s)*s*seed2);
     calcSmoothStep(temp1,fmod(sin(dot)*1000,1),fmod(y,s)/s);
     calcSmoothStep(SmoothStep,temp2,fmod(x,s)/s);
     noise+=SmoothStep*h;
 }
 
-void terrainColSDF(float r,float g,float b,float px,float py,float pz){
+void sceneSDF(float x,float y,float z){ // Calculates the scene. Issue lies somewhere here...
+    SDF=1e+100;
     noise=0;
-    calcNoise(px,pz,700,450);
-    calcNoise(px,pz,250,200);
-    calcNoise(px,pz,120,50);
-    calcNoise(px,pz,50,25);
-    calcNoise(px,pz,20,10);
-    calcNoise(px,pz,10,3);
-    calcNoise(px,pz,3,1.5);
-    calcNoise(px,pz,1,0.5);
-    if(py-noise<SDF){
-        SDF=py-noise;
-        if(SDF<epsilon&&stats){
-            surfaceR=r;
-            surfaceG=g;
-            surfaceB=b;
+    calcNoise(x,z,700,450); // Generate terrain by layering different noise things over eachother
+    calcNoise(x,z,250,200);
+    calcNoise(x,z,120,50 );
+    calcNoise(x,z,50 ,25 );
+    calcNoise(x,z,20 ,10 );
+    calcNoise(x,z,10 ,3  );
+    calcNoise(x,z,3  ,1.5);
+    calcNoise(x,z,1  ,0.5);
+    if(y-noise<SDF){ // Checks if SDF should be modified
+        SDF=y-noise;
+        if(SDF<epsilon&&stats){ // Checks if the ray intersects with the terrain.
+            surfaceR=120;
+            surfaceG=120;
+            surfaceB=120;
             hitGround=true;
         }
     }
     height=noise;
-}
-void planeNormalsSDF(float nx,float ny,float nz,float d,float px,float py,float pz,float r,float g,float b,float ref){
-    calcDot(px,py,pz,nx,ny,nz);
-    dot-=d;
+    dot=y-waterHeight;
     if(dot<SDF){
         SDF=dot;
         if(SDF<epsilon&&stats){
-            surfaceR=r;
-            surfaceG=g;
-            surfaceB=b;
-            reflectivity=ref;
+            surfaceR=60;
+            surfaceG=120;
+            surfaceB=200;
+            reflectivity=0.6;
         }
     }
 }
-void sceneSDF(float x,float y,float z){
-    SDF=1e+100;
-    terrainColSDF(120,120,120,x,y,z);
-    planeNormalsSDF(0,1,0,waterHeight,x,y,z,60,120,200,0.6);
-}
-void marchRay(float x,float y,float z,float dx,float dy,float dz,int renderDistance){
+void marchRay(float x,float y,float z,float dx,float dy,float dz,int renderDistance){ // ... Marches the ray
     rayX=x;
     rayY=y;
     rayZ=z;
@@ -101,6 +76,7 @@ void marchRay(float x,float y,float z,float dx,float dy,float dz,int renderDista
             hit=true;
             break;
         }
+
         i++;
         rayX+=SDF*dx;
         rayY+=SDF*dy;
@@ -109,11 +85,11 @@ void marchRay(float x,float y,float z,float dx,float dy,float dz,int renderDista
     }
 }
 void calcLighting(float px,float py, float pz, float nx,float ny,float nz,float lx,float ly,float lz,float r,float g,float b,float brightness,bool infinite){
-    calcDist(px,py,pz,lx,ly,lz);
-    calcDot(normalX,normalY,normalZ,distX/dist,distY/dist,distZ/dist);
-    if(!infinite){
-        dot-=dist/lightDiffuse;
-    }
+    distX=lx-pz;
+    distY=ly-py;
+    distZ=lz-px;
+    dist=sqrt((distX*distX)+(distY*distY)+(distZ*distZ));
+    dot=(normalX*(distX/dist))+(normalY*(distY/dist))+(normalZ*(distZ/dist));
     if(dot>0){
         brightR=brightness*r*dot;
         brightG=brightness*g*dot;
@@ -122,7 +98,7 @@ void calcLighting(float px,float py, float pz, float nx,float ny,float nz,float 
 }
 void colorGround(){
     if(hitGround){
-        calcDot(normalX,normalY,normalZ,0,1,0);
+        dot=normalY;
         if(dot>grassDensity){
             surfaceR=100;
             surfaceG=130;
@@ -147,10 +123,13 @@ void getNormals(float x,float y, float z){
     normalZ=SDF;
     sceneSDF(x,y,z-epsilon);
     normalZ-=SDF;
-    calcDist(0,0,0,normalX,normalY,normalZ);
-    normalX=distX/dist;
-    normalY=distY/dist;
-    normalZ=distZ/dist;
+    distX=normalX;
+    distY=normalY;
+    distZ=normalZ;
+    dist=sqrt((distX*distX)+(distY*distY)+(distZ*distZ));
+    normalX/=dist;
+    normalY/=dist;
+    normalZ/=dist;
 }
 void applyFog(){
     fog=fog/fogVal;
@@ -169,9 +148,16 @@ void renderPixel(float x,float y){
     brightG=0.3;
     brightB=0.35;
     stats=true;
-    calcDist(0,0,0,x,y,fov);
-    rotateRay(distX/dist,distY/dist,distZ/dist,camRotX,camRotY);
-    marchRay(camX,camY,camZ,rayDirX,rayDirY,rayDirZ,1000);
+    dist=0;
+    distX=x;
+    distY=y;
+    distZ=fov;
+    dist=sqrt((distX*distX)+(distY*distY)+(distZ*distZ));
+    rayDirY=((distZ/dist)*sinA)+((distY/dist)*cosA);
+    rayDirZ=((distZ/dist)*cosA)-((distY/dist)*sinA);
+    rayDirX=(rayDirZ*sinB)+((distX/dist)*cosA);
+    rayDirZ=(rayDirZ*cosB)-((distX/dist)*cosA);
+    marchRay(camX,camY,camZ,rayDirX,rayDirY,rayDirZ,1000); //x y z dx dy dz renderdistance
     if(hit){
         fog=rayLen;
         hitX=rayX;
@@ -205,13 +191,13 @@ void renderPixel(float x,float y){
         finalR=((1-r)*finalR)+(r*reflectionR);
         finalG=((1-r)*finalG)+(r*reflectionG);
         finalB=((1-r)*finalB)+(r*reflectionB);
+        applyFog();
     }else{
         finalR=skyR;
         finalG=skyG;
         finalB=skyB;
     }
 }
-
 
 void reshape(int w, int h) { // Handle resizing the window
     glViewport(0, 0, w, h);
@@ -226,10 +212,6 @@ void reshape(int w, int h) { // Handle resizing the window
 }
 void display(){
     glClear(GL_COLOR_BUFFER_BIT);
-    sinA=sin(camRotX);
-    sinB=sin(camRotY);
-    cosA=cos(camRotX);
-    cosB=cos(camRotY);
     glBegin(GL_POINTS);
     for(int yPixel=0;yPixel<HEIGHT;yPixel++){
         for(int xPixel=0;xPixel<WIDTH;xPixel++){
@@ -249,8 +231,8 @@ int main(int argc, char** argv){ // Initialize stuff
     glutCreateWindow("Landscape Raymarcher");
 
     glMatrixMode(GL_PROJECTION);
-    glClearColor(skyR/255,skyB/255,skyG/255,1.0f);
-    gluOrtho2D(0, WIDTH, 0, HEIGHT);
+    glClearColor(skyR/255,skyG/255,skyB/255,1.0f);
+    glOrtho(0, WIDTH, 0, HEIGHT, -1, 1);
     glLoadIdentity();
 
     glutReshapeFunc(reshape);
